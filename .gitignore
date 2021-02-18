@@ -1,6 +1,7 @@
 pkgrepo
-pkgupdates.conf
-test.*.conf
+conf/pkgupdates.conf
+conf/test.*.conf
 pkgrepo-update/*
 .archversion.cache
 *.swp
+archversion-envconfig-git/archversion-envconfig-git-*

@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+import argparse
+import datetime
+import email.utils
+import logging
+import logging.handlers
+import pathlib
+import re
+import systemd.daemon
+import tempfile
+from subprocess import Popen, PIPE, STDOUT
+
+
+logger = logging
+home_re = re.compile(r'/home/.*?[^\\]/', re.M)
+bin_path = pathlib.Path(__file__).resolve().parent
+pkgupdates_sync = bin_path.joinpath('pkgupdates-sync')
+pkgupdates_maintenance = bin_path.joinpath('pkgupdates-maintenance')
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Script for running pkgupdates as a cron job')
+    # /data/www/public/pkgupdates.txt
+    default_output = pathlib.Path(tempfile.gettempdir(), "pkgupdates.txt")
+    parser.add_argument('-o', '--output', type=pathlib.Path, default=default_output,
+                        help=f'Write output to file (default {default_output})')
+    installed_cwd = pathlib.Path("/usr/share/pkgupdates")
+    default_cwd = pathlib.Path.cwd() if bin_path != pathlib.Path("/usr/bin") else installed_cwd
+    parser.add_argument('-c', '--cwd', type=pathlib.Path, default=default_cwd,
+                        help=f'The cwd for pkgupdates-sync (default {pathlib.Path.cwd()})')
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help='Enable debug (default False)')
+    args = parser.parse_args()
+    if not args.cwd.is_absolute():
+        args.cwd = pathlib.Path.cwd().joinpath(args.cwd).resolve()
+    return args
+
+
+def config_logging(args):
+    h_file = logging.handlers.RotatingFileHandler(args.output, backupCount=3)
+    h_file.doRollover()
+    h_file.setLevel(logging.INFO)
+    h_stream = logging.StreamHandler()
+    h_stream.setLevel(logging.INFO)
+    logging.basicConfig(format='%(message)s', level=logging.INFO, handlers=[h_file, h_stream])
+
+
+def get_rfc_datetime_now():
+    now = datetime.datetime.now()
+    return email.utils.format_datetime(now)
+
+
+def run_sync(args):
+    if args.debug:
+        sync_cmd = [pkgupdates_sync, "-cdbnf", "+acccheck"]
+    else:
+        sync_cmd = [pkgupdates_sync, "-cdnf"]
+
+    with Popen(sync_cmd, stdout=PIPE, stderr=STDOUT, cwd=args.cwd, text=True) as proc:
+        for line in proc.stdout:
+            logger.info(home_re.sub('', line.rstrip()))
+
+
+def run_maintenance(args):
+    with Popen([pkgupdates_maintenance], stdout=PIPE, stderr=STDOUT, cwd=args.cwd, text=True) as proc:
+        for line in proc.stdout:
+            logger.info(home_re.sub('', line.rstrip()))
+
+
+def main():
+    systemd.daemon.notify('READY=1')
+    args = parse_args()
+    config_logging(args)
+    logger.info(get_rfc_datetime_now())
+    run_sync(args)
+    run_maintenance(args)
+    logger.info(get_rfc_datetime_now())
+
+
+if __name__ == "__main__":
+    main()
