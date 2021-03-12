@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
 
-#
 # pkgupdates: The package version checking system for the ArchStrike repo
-#
 # Written by Kevin MacMartin for the ArchStrike project
-#
 # Released under the MIT license
-#
 
 # Unset variables we don't expect
 
@@ -303,7 +299,7 @@ function vercomp_display {
     # Commented out original line
     #printf '%s\n' "${pacname} ${upver_display} ${divider} ${pkgver_display}$author"
     # To return to original output uncomment line above and comment line below
-    printf '%-35s   %-30s   %s\n' "${pacname}" "${upver_display}" "${pkgver_display}$author"
+    printf '%-45s   %-35s   %s\n' "${pacname}" "${upver_display}" "${pkgver_display}$author"
 }
 
 # HELPER FUNCTION: Compares two versions and sends result + colour to input vars
@@ -522,8 +518,8 @@ function develversion_function {
 
             source PKGBUILD
 
-            [[ -n "$epoch" ]] && epoch="${epoch}:"
-            upver="$epoch${pkg}ver-${pkg}rel"
+            [[ -n "${epoch}" ]] && epoch="${epoch}:"
+            upver="${epoch}${pkgver}-${pkgrel}"
             unset epoch pkgver pkgrel
             popd >/dev/null
 
@@ -654,7 +650,7 @@ function archversion_function {
                     fi
                 done
 
-                # Set the ${pkg}ver from the PKGBUILD for the ${pkg} if it exists
+                # Set the ${pkgver} from the PKGBUILD for the ${pkg} if it exists
                 [[ -f "${REPODIR}/${repo_dir}/${pkg}/PKGBUILD" ]] && {
                     unset pkgver
                     while read -r; do
@@ -664,8 +660,8 @@ function archversion_function {
                 }
 
                 # Compare the upstream version again the pacman version, or both the db and git pacman versions if they differ
-                if [[ -n "${pkg}ver" && ! "${pacver}" = "${pkgver%-*}" ]]; then
-                    vercmp_handle "${pkg}" "${upver}" "${pacver}" "${pkg}ver"
+                if [[ -n "${pkgver}" && ! "${pacver}" = "${pkgver%-*}" ]]; then
+                    vercmp_handle "${pkg}" "${upver}" "${pacver}" "${pkgver}"
                 else
                     vercmp_handle "${pkg}" "${upver}" "${pacver}"
                 fi
@@ -870,9 +866,9 @@ function versioncompare_function {
 
             # Create a record for packages that haven't been seen or update a package with one for ones that have
             if [[ $(sqlite3 "${versioncomp_tmpdb}" "SELECT * FROM VERSIONLIST WHERE package='${pkgname}';") ]]; then
-                sqlite3 "${versioncomp_tmpdb}" "UPDATE VERSIONLIST SET ${repo_arch}='${pkg}ver' WHERE package='${pkgname}';"
+                sqlite3 "${versioncomp_tmpdb}" "UPDATE VERSIONLIST SET ${repo_arch}='${pkgver}' WHERE package='${pkgname}';"
             else
-                sqlite3 "${versioncomp_tmpdb}" "INSERT INTO VERSIONLIST(package,${repo_arch}) VALUES('${pkgname}','${pkg}ver');"
+                sqlite3 "${versioncomp_tmpdb}" "INSERT INTO VERSIONLIST(package,${repo_arch}) VALUES('${pkgname}','${pkgver}');"
             fi
         done
 
@@ -909,7 +905,7 @@ function versioncompare_function {
 # HELP: display usage information and available commands
 function help_function {
     printf '\n%s\n' "${c_b}USAGE${c_c}"
-    printf '  %s\n\n' "${c_y}$script_name${c_c} ${c_d}[${c_t}OPTIONS${c_d}] [${c_t}PKGLIST${c_d}] ${c_g}+include-regex${c_c} ${c_r}^ignore-regex${c_c}"
+    printf '  %s\n\n' "${c_y}${script_name}${c_c} ${c_d}[${c_t}OPTIONS${c_d}] [${c_t}PKGLIST${c_d}] ${c_g}+include-regex${c_c} ${c_r}^ignore-regex${c_c}"
     printf '%s\n' "${c_b}VERSION OPTIONS${c_c}"
     printf '  %-32s %s\n' "${c_w}-c${c_d}|${c_w}c${c_c}" "check versions with ${c_m}archversion${c_c} using ${c_w}${ARCHVERSION_CONF/$HOME/\~}${c_c}"
     printf '  %-32s %s\n' "${c_w}-d${c_d}|${c_w}d${c_c}" "check versions for ${c_m}VCS packages${c_c} using ${c_w}${DEVELVERSION_CONF/$HOME/\~}${c_c}"
@@ -931,12 +927,12 @@ function help_function {
 
 function examples {
     printf '\n%s\n\n' "${c_w}Regular expressions can be used to ${c_g}include${c_w} or ${c_r}exclude${c_w} matching scripts:"
-    printf '  %-56s %s\n' "${c_y}$script_name ${c_b}-c ${c_g}+bmon" "${c_d}|${c_w} check the ${c_m}archversion.conf${c_w} package ${c_g}bmon${c_c}"
-    printf '  %-56s %s\n' "${c_y}$script_name ${c_b}-cd ${c_g}+pipal +cjdns-git" "${c_d}|${c_w} check the ${c_g}pipal${c_w} and ${c_g}cjdns-git${c_w} packages${c_c}"
-    printf '  %-56s %s\n' "${c_y}$script_name ${c_b}-cd ${c_g}+python-.*" "${c_d}|${c_w} check ${c_m}all${c_w} packages matching ${c_g}python-*${c_c}"
-    printf '  %-60s %s\n' "${c_y}$script_name ${c_b}-cd ${c_g}+python2-.* ${c_r}^.*-net.*" "${c_d}|${c_w} check ${c_m}all${c_w} packages matching ${c_g}python2-*${c_w} except those matching ${c_r}*-net*${c_c}"
-    printf '  %-56s %s\n' "${c_y}$script_name ${c_b}-cd ${c_r}^ruby-.*" "${c_d}|${c_w} check ${c_m}all${c_w} packages except ones matching ${c_r}ruby-*${c_c}"
-    printf '  %-63s %s\n\n' "${c_y}$script_name ${c_b}-cd ${c_g}+ruby-.* ${c_r}^ruby-ansi" "${c_d}|${c_w} check ${c_m}all${c_w} packages matching ${c_g}ruby-*${c_c} except ${c_r}ruby-ansi${c_c}"
+    printf '  %-56s %s\n' "${c_y}${script_name} ${c_b}-c ${c_g}+bmon" "${c_d}|${c_w} check the ${c_m}archversion.conf${c_w} package ${c_g}bmon${c_c}"
+    printf '  %-56s %s\n' "${c_y}${script_name} ${c_b}-cd ${c_g}+pipal +cjdns-git" "${c_d}|${c_w} check the ${c_g}pipal${c_w} and ${c_g}cjdns-git${c_w} packages${c_c}"
+    printf '  %-56s %s\n' "${c_y}${script_name} ${c_b}-cd ${c_g}+python-.*" "${c_d}|${c_w} check ${c_m}all${c_w} packages matching ${c_g}python-*${c_c}"
+    printf '  %-60s %s\n' "${c_y}${script_name} ${c_b}-cd ${c_g}+python2-.* ${c_r}^.*-net.*" "${c_d}|${c_w} check ${c_m}all${c_w} packages matching ${c_g}python2-*${c_w} except those matching ${c_r}*-net*${c_c}"
+    printf '  %-56s %s\n' "${c_y}${script_name} ${c_b}-cd ${c_r}^ruby-.*" "${c_d}|${c_w} check ${c_m}all${c_w} packages except ones matching ${c_r}ruby-*${c_c}"
+    printf '  %-63s %s\n\n' "${c_y}${script_name} ${c_b}-cd ${c_g}+ruby-.* ${c_r}^ruby-ansi" "${c_d}|${c_w} check ${c_m}all${c_w} packages matching ${c_g}ruby-*${c_c} except ${c_r}ruby-ansi${c_c}"
     exit 0
 }
 
